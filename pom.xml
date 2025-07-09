@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.nectar</groupId>
+    <artifactId>uae-deploy-parent</artifactId>
+    <version>2.6.2</version>
+    <packaging>pom</packaging>
+    <name>UAE Deploy Parent</name>
+    <description>Parent project for UAE Deploy multi-module build</description>
+
+    <modules>
+        <module>deployOne</module>
+        <module>deployTwo</module>
+        <module>deployThree</module>
+        <module>deployFour</module>
+        <module>deployFive</module>
+    </modules>
+</project>
