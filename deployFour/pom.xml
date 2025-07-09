@@ -3,18 +3,15 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>com.nectar</groupId>
-        <artifactId>uae-deploy-parent</artifactId>
-        <version>1.0.0</version>
-        <relativePath>../pom.xml</relativePath>
-    </parent>
-	<groupId>com.nectar</groupId>
-	<artifactId>deploy</artifactId>
-	<version>Four</version>
+	<parent>
+		<groupId>com.nectar.platform</groupId>
+		<artifactId>parent-pom</artifactId>
+		<version>1.0.0</version>
+	</parent>
+
+	<artifactId>deployFour</artifactId>
 	<packaging>war</packaging>
-	<name>user_docker_project</name>
-	<description>user_docker_project</description>
+	<name>deployFour</name>
 	<url />
 	<licenses>
 		<license />

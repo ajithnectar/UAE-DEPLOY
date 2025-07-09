@@ -26,16 +26,16 @@ public class UserDemoApplication extends SpringBootServletInitializer implements
 		
 		if (userDemoRepository.count() == 0) {
             List<UserEntity> users = Arrays.asList(
-                new UserEntity("Mohanlal", "mohanlal@example.com", "9876543210"),
-                new UserEntity("Mammootty", "mammootty@example.com", "9876543211"),
-                new UserEntity("Dulquer Salmaan", "dulquer@example.com", "9876543212"),
-                new UserEntity("Fahadh Faasil", "fahadh@example.com", "9876543213"),
-                new UserEntity("Prithviraj Sukumaran", "prithviraj@example.com", "9876543214"),
-                new UserEntity("Tovino Thomas", "tovino@example.com", "9876543215"),
-                new UserEntity("Nivin Pauly", "nivin@example.com", "9876543216"),
-                new UserEntity("Suresh Gopi", "suresh@example.com", "9876543217"),
-                new UserEntity("Jayasurya", "jayasurya@example.com", "9876543218"),
-                new UserEntity("Kunchacko Boban", "kunchacko@example.com", "9876543219")
+                new UserEntity("Mohanlal", "mohanlal@deployThree", "9876543210"),
+                new UserEntity("Mammootty", "mammootty@deployThree", "9876543211"),
+                new UserEntity("Dulquer Salmaan", "dulquer@deployThree", "9876543212"),
+                new UserEntity("Fahadh Faasil", "fahadh@deployThree", "9876543213"),
+                new UserEntity("Prithviraj Sukumaran", "prithviraj@deployThree", "9876543214"),
+                new UserEntity("Tovino Thomas", "tovino@deployThree", "9876543215"),
+                new UserEntity("Nivin Pauly", "nivin@deployThree", "9876543216"),
+                new UserEntity("Suresh Gopi", "suresh@deployThree", "9876543217"),
+                new UserEntity("Jayasurya", "jayasurya@deployThree", "9876543218"),
+                new UserEntity("Kunchacko Boban", "kunchacko@deployThree", "9876543219")
             );
             userDemoRepository.saveAll(users);
         }
