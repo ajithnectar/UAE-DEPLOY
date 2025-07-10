@@ -21,8 +21,8 @@ Make sure you have the following installed:
 - PostgreSQL
 - tomcat
 
-## Run Tomcat in an isolated container 
-### tomcat should have credentials 
+# Run Tomcat in docker container
+### Tomcat should have credentials 
 
 ### Installation and configuration of project
 2. Open project folder go to dir : \src\main\resources\docker\application.properties
