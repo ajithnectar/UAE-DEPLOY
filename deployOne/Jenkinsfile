@@ -27,9 +27,8 @@ pipeline {
             steps {
               //  sh 'mvnw clean install -Dmaven.test.skip=true -P docker'
             //}
-		dir('deployOne') {
     			sh 'mvn clean install -Dmaven.test.skip=true -P docker'
-		   }
+		   
 		}
         }
 
@@ -37,7 +36,7 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: env.TOMCAT_CREDENTIALS_ID, usernameVariable: 'TOMCAT_USER', passwordVariable: 'TOMCAT_PASS')]) {
                     script {
-                        def warFile = findFiles(glob: 'target/*.war')[0]
+                        def warFile = findFiles(glob: 'deployOne/target/*.war')[0]
                         def deployUrl = "${TOMCAT_URL}/manager/text/deploy?path=/${TOMCAT_APP_NAME}&update=true"
                         sh """
                             curl --fail -v --upload-file ${warFile.path} \\
