@@ -29,31 +29,34 @@ pipeline {
     }
 
     stage('Deploy to Tomcat') {
-      steps {
-        withCredentials([usernamePassword(
-          credentialsId: env.TOMCAT_CREDENTIALS_ID,
-          usernameVariable: 'TOMCAT_USER',
-          passwordVariable: 'TOMCAT_PASS'
-        )]) {
-          script {
-        // capture the WAR filename via a shell glob
+  steps {
+    withCredentials([usernamePassword(
+      credentialsId: env.TOMCAT_CREDENTIALS_ID,
+      usernameVariable: 'TOMCAT_USER',
+      passwordVariable: 'TOMCAT_PASS'
+    )]) {
+      script {
+        // 1) point at the correct module folder
         def warPath = sh(
-          script: "ls deployOne/target/*.war",
+          script: "ls deployTwo/target/*.war",
           returnStdout: true
         ).trim()
-
         echo "Deploying WAR: ${warPath}"
 
-        def deployUrl = "${TOMCAT_URL}/manager/text/deploy?path=/${TOMCAT_APP_NAME}&update=true"
+        // 2) use a clean context path (no .war suffix)
+        def context = env.TOMCAT_APP_NAME   // e.g. 'deployTwo'
+        def deployUrl = "${TOMCAT_URL}/manager/text/deploy?path=/${context}&update=true"
+
         sh """
           curl --fail -v --upload-file ${warPath} \\
                --user $TOMCAT_USER:$TOMCAT_PASS \\
                '${deployUrl}'
         """
-      		}
+     	 }
    	 }
  	 }
 	}
+
 
   post {
     always { cleanWs() }
