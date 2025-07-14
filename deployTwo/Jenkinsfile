@@ -2,14 +2,18 @@ pipeline {
   agent any
 
   environment {
+    // Tomcat Manager endpoint
     TOMCAT_URL            = 'http://api-nec-prod-1587031398.me-central-1.elb.amazonaws.com:8080'
-    TOMCAT_APP_NAME       = 'deployTwo-1.0.0.war'
+    // Context under which the app will be mounted (no “.war” suffix)
+    TOMCAT_APP_NAME       = 'deployTwo'
+    // Jenkins credentials ID for a user with manager-script role
     TOMCAT_CREDENTIALS_ID = 'ca5b05d8-fb7e-42c5-9e47-65a8fb119b82'
   }
 
   stages {
     stage('Checkout') {
       steps {
+        // Grab the full repo (parent POM + all modules)
         checkout scm
       }
     }
@@ -17,51 +21,58 @@ pipeline {
     stage('Build WAR') {
       agent {
         docker {
-          image 'maven:3.9.6-eclipse-temurin-11'
-          args  '-u root'
-          reuseNode true
+          image       'maven:3.9.6-eclipse-temurin-11'
+          args        '-u root'
+          reuseNode   true
         }
       }
       steps {
-        // this will build everything from your root pom, including deployOne
+        // Build parent & all modules, skipping tests
         sh 'mvn clean install -Dmaven.test.skip=true -P docker'
       }
     }
 
     stage('Deploy to Tomcat') {
-  steps {
-    withCredentials([usernamePassword(
-      credentialsId: env.TOMCAT_CREDENTIALS_ID,
-      usernameVariable: 'TOMCAT_USER',
-      passwordVariable: 'TOMCAT_PASS'
-    )]) {
-      script {
-        // 1) point at the correct module folder
-        def warPath = sh(
-          script: "ls deployTwo/target/*.war",
-          returnStdout: true
-        ).trim()
-        echo "Deploying WAR: ${warPath}"
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: env.TOMCAT_CREDENTIALS_ID,
+          usernameVariable: 'TOMCAT_USER',
+          passwordVariable: 'TOMCAT_PASS'
+        )]) {
+          script {
+            // 1) Find the deployTwo WAR
+            def warPath = sh(
+              script: "ls deployTwo/target/*.war",
+              returnStdout: true
+            ).trim()
+            echo "Deploying WAR: ${warPath}"
 
-        // 2) use a clean context path (no .war suffix)
-        def context = env.TOMCAT_APP_NAME   // e.g. 'deployTwo'
-        def deployUrl = "${TOMCAT_URL}/manager/text/deploy?path=/${context}&update=true"
+            // 2) Construct the Manager API URL
+            def deployUrl = "${TOMCAT_URL}/manager/text/deploy?path=/${env.TOMCAT_APP_NAME}&update=true"
 
-        sh """
-          curl --fail -v --upload-file ${warPath} \\
-               --user $TOMCAT_USER:$TOMCAT_PASS \\
-               '${deployUrl}'
-        """
-     	 }
-   	 }
- 	 }
-	}
-
+            // 3) Push it via curl
+            sh """
+              curl --fail -v --upload-file ${warPath} \\
+                   --user $TOMCAT_USER:$TOMCAT_PASS \\
+                   '${deployUrl}'
+            """
+          }
+        }
+      }
+    }
+  }
 
   post {
-    always { cleanWs() }
-    success { echo '✅ WAR deployed to Tomcat successfully!' }
-    failure { echo '❌ Deployment failed.' }
+    always {
+      // Clean up workspace
+      cleanWs()
+    }
+    success {
+      echo '✅ deployTwo WAR built and deployed successfully!'
+    }
+    failure {
+      echo '❌ Deployment failed. Check previous logs for details.'
+    }
   }
 }
 
