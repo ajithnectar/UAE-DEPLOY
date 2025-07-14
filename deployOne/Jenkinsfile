@@ -3,7 +3,7 @@ pipeline {
 
   environment {
     // Tomcat Manager endpoint
-    TOMCAT_URL            = 'http://api-nec-prod-1587031398.me-central-1.elb.amazonaws.com:8080'
+    TOMCAT_URL            = 'http://40.172.168.105:8080'
     // Context under which the app will be mounted (no “.war” suffix)
     TOMCAT_APP_NAME       = 'deployOne-1.0.0.war'
     // Jenkins credentials ID for a user with manager-script role

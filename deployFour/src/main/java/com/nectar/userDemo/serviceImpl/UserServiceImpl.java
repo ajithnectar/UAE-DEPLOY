@@ -31,7 +31,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserEntity> getAllUsers() {
-        return userDemoRepository.findAll();
+    	return userDemoRepository.findByEmailEndingWith("@deployFour");
     }
 
     @Override
