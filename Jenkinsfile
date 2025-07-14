@@ -28,7 +28,7 @@ pipeline {
               //  sh 'mvnw clean install -Dmaven.test.skip=true -P docker'
             //}
     			//sh 'mvn clean install -Dmaven.test.skip=true -P docker'
-		   sh 'mvn clean package -Dmaven.test.skip=true -P docker -pl deployOne -am'
+		   sh 'mvn clean install -Dmaven.test.skip=true -P docker'
 		}
         }
 
