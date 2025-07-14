@@ -24,13 +24,13 @@ pipeline {
                     reuseNode true
                 }
             }
-            //steps {
+            steps {
               //  sh 'mvnw clean install -Dmaven.test.skip=true -P docker'
             //}
-	dir('deployOne') {
-    		sh 'mvn clean install -Dmaven.test.skip=true -P docker'
+		dir('deployOne') {
+    			sh 'mvn clean install -Dmaven.test.skip=true -P docker'
+		   }
 		}
-
         }
 
         stage('Deploy to Tomcat') {
