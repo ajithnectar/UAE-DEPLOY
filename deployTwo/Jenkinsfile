@@ -36,18 +36,24 @@ pipeline {
           passwordVariable: 'TOMCAT_PASS'
         )]) {
           script {
-            def warFile = findFiles(glob: 'deployTwo/target/*.war')[0]
-            def deployUrl = "${TOMCAT_URL}/manager/text/deploy?path=/${TOMCAT_APP_NAME}&update=true"
-            sh """
-              curl --fail -v --upload-file ${warFile.path} \\
-                   --user $TOMCAT_USER:$TOMCAT_PASS \\
-                   '${deployUrl}'
-            """
-          }
-        }
-      }
-    }
-  }
+        // capture the WAR filename via a shell glob
+        def warPath = sh(
+          script: "ls deployOne/target/*.war",
+          returnStdout: true
+        ).trim()
+
+        echo "Deploying WAR: ${warPath}"
+
+        def deployUrl = "${TOMCAT_URL}/manager/text/deploy?path=/${TOMCAT_APP_NAME}&update=true"
+        sh """
+          curl --fail -v --upload-file ${warPath} \\
+               --user $TOMCAT_USER:$TOMCAT_PASS \\
+               '${deployUrl}'
+        """
+      		}
+   	 }
+ 	 }
+	}
 
   post {
     always { cleanWs() }
