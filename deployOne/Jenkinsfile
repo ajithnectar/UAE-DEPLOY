@@ -27,9 +27,7 @@ pipeline {
             steps {
               //  sh 'mvnw clean install -Dmaven.test.skip=true -P docker'
             //}
-		dir('..'){
     			sh 'mvn clean install -Dmaven.test.skip=true -P docker'
-		   }
 		}
         }
 
