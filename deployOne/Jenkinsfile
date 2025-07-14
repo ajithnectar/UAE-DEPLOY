@@ -1,96 +1,61 @@
 pipeline {
     agent any
- 
+
     environment {
-        AWS_REGION     = 'me-central-1'
-        AWS_ACCOUNT_ID = '017691937205'
-        ECR_REPO       = 'api'
-        IMAGE_TAG      = "${env.BUILD_NUMBER}"
-        // Jenkins credentials ID for AWS (IAM user with permissions to ECR & ECS)
-        AWS_CREDENTIALS_ID = 'c1b403c0-d505-448f-abd8-88d650c97b36'
+        // Tomcat details
+        TOMCAT_URL = 'http://api-nec-prod-1587031398.me-central-1.elb.amazonaws.com:8080'
+        TOMCAT_APP_NAME = 'user_project' // You can change this to any context name
+        // Jenkins credentials ID for Tomcat Manager user
+        TOMCAT_CREDENTIALS_ID = 'tomcat-manager-cred' // Replace with your actual credentials ID
     }
- 
+
     stages {
         stage('Checkout') {
             steps {
-                // Checkout source code from SCM
                 checkout scm
             }
         }
- 
-        stage('Login to Amazon ECR') {
-            steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY',
-                    credentialsId: env.AWS_CREDENTIALS_ID
-                ]]) {
-                    // Authenticate Docker to the ECR registry
-                    sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+        stage('Build WAR') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-11'
+                    args '-u root'
+                    reuseNode true
                 }
             }
-        }
-      // stage('build WAR'){
-        //  steps{
-          //       sh "./mvnw clean install -Dmaven.test.skip=true  -P docker"
-//	}	}
-       stage('Build WAR') {
-   	 agent {
-         docker {
-            image 'maven:3.9.6-eclipse-temurin-11'   // Java 11 + Maven 3.9
-            args  '-u root'           // cache Maven repo
-            reuseNode true                           // runs on same worker node
-        }
-    }
-    steps {
-        sh './mvnw clean install -Dmaven.test.skip=true -P docker'
-   	 }
-	}
- 
-        stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${ECR_REPO}:${IMAGE_TAG} ."
+                sh './mvnw clean install -Dmaven.test.skip=true -P docker'
             }
         }
- 
-        stage('Tag Image') {
+
+        stage('Deploy to Tomcat') {
             steps {
-                sh "docker tag ${ECR_REPO}:${IMAGE_TAG} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
-            }
-        }
- 
-        stage('Push to ECR') {
-            steps {
-                sh "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
-            }
-        }
- 
-        stage('Deploy to ECS') {
-            steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY',
-                    credentialsId: env.AWS_CREDENTIALS_ID
-                ]]) {
-                    // Force new deployment in ECS service to pick up new image
-                    sh "aws ecs update-service --cluster nectar-cluster --service nec-api-latest-service-gkajp0a1 --force-new-deployment --region ${AWS_REGION}"
+                withCredentials([usernamePassword(credentialsId: env.TOMCAT_CREDENTIALS_ID, usernameVariable: 'TOMCAT_USER', passwordVariable: 'TOMCAT_PASS')]) {
+                    script {
+                        def warFile = findFiles(glob: 'target/*.war')[0]
+                        def deployUrl = "${TOMCAT_URL}/manager/text/deploy?path=/${TOMCAT_APP_NAME}&update=true"
+                        sh """
+                            curl --fail -v --upload-file ${warFile.path} \\
+                                --user $TOMCAT_USER:$TOMCAT_PASS \\
+                                '${deployUrl}'
+                        """
+                    }
                 }
             }
         }
     }
- 
+
     post {
         always {
-            // Cleanup workspace after build
             cleanWs()
         }
         success {
-            echo 'Deployment succeeded!'
+            echo 'WAR deployed to Tomcat successfully!'
         }
         failure {
             echo 'Deployment failed.'
         }
     }
 }
+
