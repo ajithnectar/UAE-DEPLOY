@@ -1,96 +1,79 @@
 pipeline {
-    agent any
- 
-    environment {
-        AWS_REGION     = 'me-central-1'
-        AWS_ACCOUNT_ID = '017691937205'
-        ECR_REPO       = 'api'
-        IMAGE_TAG      = "${env.BUILD_NUMBER}"
-        // Jenkins credentials ID for AWS (IAM user with permissions to ECR & ECS)
-        AWS_CREDENTIALS_ID = 'c1b403c0-d505-448f-abd8-88d650c97b36'
+  agent any
+
+  environment {
+    // Tomcat Manager endpoint
+    TOMCAT_URL            = 'http://api-nec-prod-1587031398.me-central-1.elb.amazonaws.com:8080'
+    // Context under which the app will be mounted (no “.war” suffix)
+    TOMCAT_APP_NAME       = 'deployFour-1.0.0.war'
+    // Jenkins credentials ID for a user with manager-script role
+    TOMCAT_CREDENTIALS_ID = 'ca5b05d8-fb7e-42c5-9e47-65a8fb119b82'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        // Grab the full repo (parent POM + all modules)
+        checkout scm
+      }
     }
- 
-    stages {
-        stage('Checkout') {
-            steps {
-                // Checkout source code from SCM
-                checkout scm
-            }
+
+    stage('Build WAR') {
+      agent {
+        docker {
+          image       'maven:3.9.6-eclipse-temurin-11'
+          args        '-u root'
+          reuseNode   true
         }
- 
-        stage('Login to Amazon ECR') {
-            steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY',
-                    credentialsId: env.AWS_CREDENTIALS_ID
-                ]]) {
-                    // Authenticate Docker to the ECR registry
-                    sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-                }
-            }
-        }
-      // stage('build WAR'){
-        //  steps{
-          //       sh "./mvnw clean install -Dmaven.test.skip=true  -P docker"
-//	}	}
-       stage('Build WAR') {
-   	 agent {
-         docker {
-            image 'maven:3.9.6-eclipse-temurin-11'   // Java 11 + Maven 3.9
-            args  '-u root'           // cache Maven repo
-            reuseNode true                           // runs on same worker node
-        }
+      }
+      steps {
+        // Build parent & all modules, skipping tests
+        sh 'mvn clean install -Dmaven.test.skip=true -P docker'
+      }
     }
-    steps {
-        sh './mvnw clean install -Dmaven.test.skip=true -P docker'
-   	 }
-	}
- 
-        stage('Build Docker Image') {
-            steps {
-                sh "docker build -t ${ECR_REPO}:${IMAGE_TAG} ."
-            }
+
+    stage('Deploy to Tomcat') {
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: env.TOMCAT_CREDENTIALS_ID,
+          usernameVariable: 'TOMCAT_USER',
+          passwordVariable: 'TOMCAT_PASS'
+        )]) {
+          script {
+            // 1) Find the deployTwo WAR
+            def warPath = sh(
+              script: "ls deployFour/target/*.war",
+              returnStdout: true
+            ).trim()
+            echo "Deploying WAR: ${warPath}"
+
+            // 2) Construct the Manager API URL
+            def deployUrl = "${TOMCAT_URL}/manager/text/deploy?path=/${env.TOMCAT_APP_NAME}&update=true"
+
+            // 3) Push it via curl
+            sh """
+              curl --fail -v --upload-file ${warPath} \\
+                   --user $TOMCAT_USER:$TOMCAT_PASS \\
+                   '${deployUrl}'
+            """
+          }
         }
- 
-        stage('Tag Image') {
-            steps {
-                sh "docker tag ${ECR_REPO}:${IMAGE_TAG} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
-            }
-        }
- 
-        stage('Push to ECR') {
-            steps {
-                sh "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
-            }
-        }
- 
-        stage('Deploy to ECS') {
-            steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY',
-                    credentialsId: env.AWS_CREDENTIALS_ID
-                ]]) {
-                    // Force new deployment in ECS service to pick up new image
-                    sh "aws ecs update-service --cluster nectar-cluster --service nec-api-latest-service-gkajp0a1 --force-new-deployment --region ${AWS_REGION}"
-                }
-            }
-        }
+      }
     }
- 
-    post {
-        always {
-            // Cleanup workspace after build
-            cleanWs()
-        }
-        success {
-            echo 'Deployment succeeded!'
-        }
-        failure {
-            echo 'Deployment failed.'
-        }
+  }
+
+  post {
+    always {
+      // Clean up workspace
+      cleanWs()
     }
+    success {
+      echo '✅ deployTwo WAR built and deployed successfully!'
+    }
+    failure {
+      echo '❌ Deployment failed. Check previous logs for details.'
+    }
+  }
 }
+
+
